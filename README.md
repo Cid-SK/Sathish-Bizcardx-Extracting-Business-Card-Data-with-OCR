@@ -5,6 +5,7 @@
 - Streamlit GUI
 - SQL
 - Data Extraction
+- Pandas
 
 ## Problem Statement
 Develop a Streamlit application that allows users to upload an image of a business card and extract relevant information from it using easyOCR. The extracted information should include the company name, cardholder name, designation, mobile number, email address, website URL, area, city, state, and pin code. Users should be able to save the extracted information into a database along with the uploaded business card image, allowing for multiple entries.
