@@ -1,3 +1,4 @@
+
 import streamlit as st
 import easyocr
 from PIL import Image
@@ -55,13 +56,6 @@ def text2_dic(data):
 
   return details
 
-#nested button
-if "button_clicked" not in st.session_state:
-  st.session_state.button_clicked = False
-
-def callback():
-  st.session_state.button_clicked = True
-
 #streamlit part
 
 st.set_page_config(layout="wide")
@@ -71,7 +65,7 @@ st.markdown("<style>div.block-container{padding-top:1rem;}</style>",unsafe_allow
 tab1,tab2,tab3= st.tabs(["#### Home","#### Upload & Extract","#### Modify"])
 
 with tab1:
-    
+
   st.subheader(":blue[Overview:]")
   st.write('''##### BizCardX is a Streamlit application designed to simplify the process of extracting and managing \
   information from business cards. By leveraging OCR technology, users can upload an image of a business card and \
@@ -94,70 +88,54 @@ with tab1:
   digitizing and organizing business card data.")
 
 with tab2:
-  st.markdown("### :blue[Upload a Business Card]")
+  st.markdown("### :blue[Upload a Business Card to Extract the Details]")
   card_img = st.file_uploader("upload here",label_visibility="collapsed",type=["png","jpeg","jpg"])
 
   if card_img is not None:
     col1,col2,col3 = st.columns([5,2,8])
-    with col1:
-      st.image(card_img,width=380)
-    with col2:
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      st.write("")
-      extract = st.button(":blue[Extract The Data]",on_click=callback) or st.session_state.button_clicked
+    text_img,input_img=img2_text(card_img)
+    text_dict=text2_dic(text_img)
+    st.image(card_img,width=380)
+   
+    if text_dict:
+      st.success("Data Extracted Successfully")
 
-    if extract:
-      text_img,input_img=img2_text(card_img)
-      text_dict=text2_dic(text_img)
+    df=pd.DataFrame(text_dict)
 
-      if text_dict:
-        st.success("Data Extracted Successfully")
+    #img to bytes
+    image_bytes = io.BytesIO()
+    input_img.save(image_bytes,format="PNG")
+    img_data = image_bytes.getvalue()
 
-      df=pd.DataFrame(text_dict)
+    # dic creation
+    data ={"IMAGE":[img_data]}
+    df1=pd.DataFrame(data)
+    concat_df = pd.concat([df,df1],axis=1)
+    st.subheader(":blue[Preview]")
+    st.dataframe(concat_df)
 
-      #img to bytes
-      image_bytes = io.BytesIO()
-      input_img.save(image_bytes,format="PNG")
-      img_data = image_bytes.getvalue()
+    button1 = st.button("Save to Database",use_container_width=True)
 
-      # dic creation
-      data ={"IMAGE":[img_data]}
-      df1=pd.DataFrame(data)
-      concat_df = pd.concat([df,df1],axis=1)
-      st.subheader(":blue[Preview]")
-      st.dataframe(concat_df)
+    if button1:
 
-      button1 = st.button("Save to Database",use_container_width=True)
+      mydb = sqlite3.connect("bizcardx.db")
+      cursor = mydb.cursor()
 
-      if button1:
+      #table creation
+      create_table =''' CREATE TABLE IF NOT EXISTS bizcardx_details(name varchar(225),designation varchar(225),company_name varchar(225),contact varchar(225),
+                                                    email varchar(225),websie text,address text,pincode varchar(225),image text)'''
+      cursor.execute(create_table)
+      mydb.commit()
 
-        mydb = sqlite3.connect("bizcardx.db")
-        cursor = mydb.cursor()
+      #insert data
+      insert_query='''INSERT INTO bizcardx_details(name,designation,company_name,contact,email,websie,address,pincode,image)
+                                              values(?,?,?,?,?,?,?,?,?)'''
 
-        #table creation
-        create_table =''' CREATE TABLE IF NOT EXISTS bizcardx_details(name varchar(225),designation varchar(225),company_name varchar(225),contact varchar(225),
-                                                      email varchar(225),websie text,address text,pincode varchar(225),image text)'''
-        cursor.execute(create_table)
-        mydb.commit()
+      datas = concat_df.values.tolist()[0]
+      cursor.execute(insert_query,datas)
+      mydb.commit()
 
-        #insert data
-        insert_query='''INSERT INTO bizcardx_details(name,designation,company_name,contact,email,websie,address,pincode,image)
-                                                values(?,?,?,?,?,?,?,?,?)'''
-
-        datas = concat_df.values.tolist()[0]
-        cursor.execute(insert_query,datas)
-        mydb.commit()
-
-        st.success("Saved !!")
+      st.success("Saved !!")
 
 with tab3:
   st.markdown("## :blue[Stored Table]")
@@ -233,6 +211,7 @@ with tab3:
       mydb.commit()
 
       st.success("Modified !!")
+      st.rerun()
 
   with st.container(border=True):
     st.subheader(":blue[Delete The Table]")
@@ -296,3 +275,4 @@ with tab3:
           mydb.commit()
 
           st.warning("TABLE DELETED !!")
+          st.rerun()
