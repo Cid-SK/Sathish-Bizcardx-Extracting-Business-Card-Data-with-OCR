@@ -31,14 +31,14 @@ def text2_dic(data):
 
     elif "www" in data[i].lower():
       details["WEBSITE"].append(data[i])
-    
+
     elif re.match(r'\+\d{3}-\d{3}-\d{4}', data[i]) or re.match(r'\+\d{2}\s\d{10}', data[i]) or re.match(r'\d{10}', data[i]):
       details["CONTACT"].append(data[i])
 
     elif re.match(r'\d{2,4}\s[a-zA-Z]',data[i]):
       details["ADDRESS"].append(data[i])
 
-    elif re.match(r'^[a-zA-Z]+$',data[i]):   
+    elif re.match(r'^[a-zA-Z]+$',data[i]):
       details["COMPANY_NAME"].append(data[i])
 
     pincode = re.search(r'\b\d{6}\b', data[i])
@@ -60,7 +60,7 @@ cursor = mydb.cursor()
 
 #table creation
 create_table =''' CREATE TABLE IF NOT EXISTS bizcardx_details(name varchar(225),designation varchar(225),company_name varchar(225),contact varchar(225),
-                                              email varchar(225),website text,address text,pincode varchar(225),image text)'''
+                                              email varchar(225) primary key ,website text,address text,pincode varchar(225),image text)'''
 cursor.execute(create_table)
 mydb.commit()
 
@@ -126,16 +126,19 @@ with tab2:
     button1 = st.button(":blue[***Save to Database***]",use_container_width=True)
 
     if button1:
+      try:
+        #insert data
+        insert_query='''INSERT INTO bizcardx_details(name,designation,company_name,contact,email,website,address,pincode,image)
+                                                values(?,?,?,?,?,?,?,?,?)'''
 
-      #insert data
-      insert_query='''INSERT INTO bizcardx_details(name,designation,company_name,contact,email,website,address,pincode,image)
-                                              values(?,?,?,?,?,?,?,?,?)'''
+        datas = concat_df.values.tolist()[0]
+        cursor.execute(insert_query,datas)
+        mydb.commit()
 
-      datas = concat_df.values.tolist()[0]
-      cursor.execute(insert_query,datas)
-      mydb.commit()
-
-      st.success("Saved !!")
+        st.success("Saved !!")
+      except sqlite3.IntegrityError :
+        # Handle duplicate entry error
+        st.error(f"This data already Exists.")
 
 with tab3:
   st.markdown("### :blue[Stored Data]")
